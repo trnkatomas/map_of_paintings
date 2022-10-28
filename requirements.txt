@@ -1,0 +1,6 @@
+fastapi
+wikipedia
+pandas
+pywikibot
+firebase_admin
+uvicorn
