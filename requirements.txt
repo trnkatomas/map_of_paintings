@@ -4,3 +4,4 @@ pandas
 pywikibot
 firebase_admin
 uvicorn
+wikitextparser
