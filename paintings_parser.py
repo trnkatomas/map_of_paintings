@@ -45,5 +45,47 @@ def parse_with_ner(cell):
     doc = nlp(cell)
     return {(ent.text, ent.label_) for ent in doc.ents}
 
+
+def try_to_understand_the_columns(df):
+    columns_index = {'painting': ('name', 'title'),
+                     'location': ('city', 'gallery', 'country'),
+                     'link_to_image': ('image', 'painting'),
+                     'technique': ('technique',),
+                     'year': ('year',),
+                     'dimensions': ('dimensions',)}
+    df_columns = [x.lower() for x in df.columns]
+    entities_with_indexes = {x:-1 for x in columns_index.keys()}
+    for i, column in enumerate(df_columns):
+        for e, values in columns_index.items():
+            for value in values:
+                if value in column:
+                    entities_with_indexes.update({e:i})
+                    continue
+    return entities_with_indexes
+
+
+def try_to_parse_the_data(listing_page_name):
+    the_paintings_list = retrieve_the_page(listing_page_name)
+    images_with_links = get_links_for_images_with_names(the_paintings_list)
+    assert len(images_with_links) > 0, "There were no links to images on this page"
+    page_raw_data = the_paintings_list.get()
+    parsed_page = wtp.parse(page_raw_data)
+    assert len(parsed_page.tables) > 0, "There was no table on the page"
+    images_table = parsed_page.tables[0]
+    image_df = pd.DataFrame(images_table.data()[1:], columns=images_table.data()[0])
+
+    parsed_df = image_df.applymap(try_to_parse_cell)
+    entities = try_to_understand_the_columns(parsed_df)
+    print(entities)
+    #parsed_df_with_links = parsed_df.assign(painting_link=lambda x: x.Painting.apply(lambda y: images_with_links.get(y)))
+    return parsed_df #_with_links
+
 if __name__ == "__main__":
-    the_paintings_list = retrieve_the_page(u'List of paintings by Caravaggio')
+    carravagio_listing_page = u'List of paintings by Caravaggio'
+    durer_listing_page = u'List_of_paintings_by_Albrecht_D%C3%BCrer'
+    raphael_listing_page = u'List_of_paintings_by_Raphael'
+    listings = [carravagio_listing_page, durer_listing_page, raphael_listing_page]
+    for listing in listings:
+        df = try_to_parse_the_data(listing)
+        #print(df.head())
+        print(df.info())
