@@ -7,7 +7,7 @@ from fastapi.staticfiles import StaticFiles
 
 app = FastAPI()
 
-origins = [    
+origins = [
     "http://localhost:8080",
 ]
 
@@ -21,14 +21,17 @@ app.add_middleware(
 
 # app.mount("/static", StaticFiles(directory="static"), name="static")
 
+
 @app.get("/test_endpoint")
 def js_endpoint(input: str):
     print(input)
-    return {'hello': random.randint(0,100)}
+    return {"hello": random.randint(0, 100)}
+
 
 @app.get("/all_artists")
 def get_all_artists():
-    return ['Caravaggio', 'Duerer']
+    return ["Caravaggio", "Duerer"]
+
 
 if __name__ == "__main__":
     uvicorn.run("test_it:app", host="0.0.0.0", port=8000, reload=True)

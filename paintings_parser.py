@@ -7,15 +7,18 @@ import wikitextparser as wtp
 
 nlp = spacy.load("en_core_web_trf")
 
+
 def retrieve_the_page(page_name):
-    site = pywikibot.Site('wikipedia:en')
+    site = pywikibot.Site("wikipedia:en")
     page = pywikibot.Page(site, f"{page_name}")
     return page
 
+
 def get_links_for_images_with_names(page):
     images_list = page.imagelinks()
-    image_links_dict = {i.title():i.get_file_url() for i in images_list}
+    image_links_dict = {i.title(): i.get_file_url() for i in images_list}
     return image_links_dict
+
 
 def get_table(page):
     pass
@@ -23,7 +26,7 @@ def get_table(page):
 
 def fix_link_protocol(link):
     if link.startswith("//"):
-        return f'http:{link}'
+        return f"http:{link}"
     else:
         return link
 
@@ -32,17 +35,19 @@ def get_the_page_link_by_name(name):
     page = pywikibot.Page(site, f"{name}")
     return fix_link_protocol(page.permalink())
 
+
 def try_to_parse_cell(cell):
     parsed_cell = wtp.parse(cell)
-    all_the_text = ''
+    all_the_text = ""
     if parsed_cell.wikilinks:
         if "File:" in parsed_cell.wikilinks[0].title:
             return parsed_cell.wikilinks[0].title
         else:
             gather_text = [x.text for x in parsed_cell.wikilinks if x.text]
             if gather_text:
-                all_the_text += " ".join(gather_text)                
-    return all_the_text + " " + parsed_cell.plain_text()    
+                all_the_text += " ".join(gather_text)
+    return all_the_text + " " + parsed_cell.plain_text()
+
 
 def parse_with_ner(cell):
     doc = nlp(cell)
@@ -65,7 +70,7 @@ def get_coordinates(data_item):
         else:
             return None
     return coordinates
-    
+
 
 def get_entity(wiki_entities):
     city = {"Q515", "Q1549591", "Q5119"}
@@ -78,22 +83,26 @@ def get_entity(wiki_entities):
             entities.append("museum")
     # do simple majority vote for really weird edge cases
     return Counter(entities).most_common(1)[0][0]
-    
+
 
 def get_painting():
-    parsed = wtp.parse("{{sort|{{nts|1592}}|c. [[1592 in art|1592–1593]]}}:<br>''[[Boy Peeling a Fruit|Boy Peeling Fruit]]''")
+    parsed = wtp.parse(
+        "{{sort|{{nts|1592}}|c. [[1592 in art|1592–1593]]}}:<br>''[[Boy Peeling a Fruit|Boy Peeling Fruit]]''"
+    )
     page = pywikibot.Page(site, f"{parsed.wikilinks[1].text}")
     painting = page.data_item()
     paintint_claims = painting.claims
-    interesting_properties = {'height': "P2048",
-                            "width": "P2049",
-                            "location_of_creation": "P1071",
-                            "depicts": "P180",
-                            "materials": "P186",
-                            "genre": "P136",
-                            "year": "P571"}
+    interesting_properties = {
+        "height": "P2048",
+        "width": "P2049",
+        "location_of_creation": "P1071",
+        "depicts": "P180",
+        "materials": "P186",
+        "genre": "P136",
+        "year": "P571",
+    }
     actual_data = {}
-    for k,v in interesting_properties.items():
+    for k, v in interesting_properties.items():
         actual_data.update({k: paintint_claims.get(v)})
 
 
@@ -106,35 +115,43 @@ def retrieve_links(cell):
             coordinates = get_coordinates(data_item)
             what_it_is_it = get_instances_for_link(f"{link.title}")
             custom_entity = get_entity(what_it_is_it)
-            yield {link.target: {'cooridinates': coordinates, 'wiki_entity': what_it_is_it, 'entity': custom_entity}}
+            yield {
+                link.target: {
+                    "cooridinates": coordinates,
+                    "wiki_entity": what_it_is_it,
+                    "entity": custom_entity,
+                }
+            }
 
 
 def fix_the_dimensions(dimensions):
     dims = []
     for x in dimensions:
         val, entity_type = x
-        if entity_type == 'QUANTITY':
+        if entity_type == "QUANTITY":
             splited = val.split()
             for v in splited:
-                v = ''.join([y for y in v if y.isnumeric() or y=='.'])
+                v = "".join([y for y in v if y.isnumeric() or y == "."])
                 dims.append(v)
     return tuple([x for x in dims if x])
 
 
 def try_to_understand_the_columns(df):
-    columns_index = {'painting': ('name', 'title'),
-                     'location': ('city', 'gallery', 'country'),
-                     'link_to_image': ('image', 'painting'),
-                     'technique': ('technique',),
-                     'year': ('year',),
-                     'dimensions': ('dimensions',)}
+    columns_index = {
+        "painting": ("name", "title"),
+        "location": ("city", "gallery", "country"),
+        "link_to_image": ("image", "painting"),
+        "technique": ("technique",),
+        "year": ("year",),
+        "dimensions": ("dimensions",),
+    }
     df_columns = [x.lower() for x in df.columns]
-    entities_with_indexes = {x:-1 for x in columns_index.keys()}
+    entities_with_indexes = {x: -1 for x in columns_index.keys()}
     for i, column in enumerate(df_columns):
         for e, values in columns_index.items():
             for value in values:
                 if value in column:
-                    entities_with_indexes.update({e:i})
+                    entities_with_indexes.update({e: i})
                     continue
     return entities_with_indexes
 
@@ -152,15 +169,16 @@ def try_to_parse_the_data(listing_page_name):
     parsed_df = image_df.applymap(try_to_parse_cell)
     entities = try_to_understand_the_columns(parsed_df)
     print(entities)
-    #parsed_df_with_links = parsed_df.assign(painting_link=lambda x: x.Painting.apply(lambda y: images_with_links.get(y)))
-    return parsed_df #_with_links
+    # parsed_df_with_links = parsed_df.assign(painting_link=lambda x: x.Painting.apply(lambda y: images_with_links.get(y)))
+    return parsed_df  # _with_links
+
 
 if __name__ == "__main__":
-    carravagio_listing_page = u'List of paintings by Caravaggio'
-    durer_listing_page = u'List_of_paintings_by_Albrecht_D%C3%BCrer'
-    raphael_listing_page = u'List_of_paintings_by_Raphael'
+    carravagio_listing_page = "List of paintings by Caravaggio"
+    durer_listing_page = "List_of_paintings_by_Albrecht_D%C3%BCrer"
+    raphael_listing_page = "List_of_paintings_by_Raphael"
     listings = [carravagio_listing_page, durer_listing_page, raphael_listing_page]
     for listing in listings:
         df = try_to_parse_the_data(listing)
-        #print(df.head())
+        # print(df.head())
         print(df.info())
