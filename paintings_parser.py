@@ -1,8 +1,9 @@
-import pywikibot
+from collections import Counter
 
 import pandas as pd
-import wikitextparser as wtp
+import pywikibot
 import spacy
+import wikitextparser as wtp
 
 nlp = spacy.load("en_core_web_trf")
 
@@ -19,11 +20,13 @@ def get_links_for_images_with_names(page):
 def get_table(page):
     pass
 
+
 def fix_link_protocol(link):
     if link.startswith("//"):
         return f'http:{link}'
     else:
         return link
+
 
 def get_the_page_link_by_name(name):
     page = pywikibot.Page(site, f"{name}")
@@ -44,6 +47,78 @@ def try_to_parse_cell(cell):
 def parse_with_ner(cell):
     doc = nlp(cell)
     return {(ent.text, ent.label_) for ent in doc.ents}
+
+
+def get_instances_for_link(link):
+    page = pywikibot.Page(site, f"{link}")
+    data_item = page.data_item()
+    is_instance_of = data_item.claims.get("P31")
+    return [instance.getTarget().getID() for instance in is_instance_of]
+
+
+def get_coordinates(data_item):
+    coordinates = data_item.coordinates(primary_only=True)
+    if not coordinates:
+        coordinates = data_item.coordinates()
+        if coordinates:
+            coordinates = coordinates[0]
+        else:
+            return None
+    return coordinates
+    
+
+def get_entity(wiki_entities):
+    city = {"Q515", "Q1549591", "Q5119"}
+    museum = {"Q33506", "Q3329412", "Q684740", "Q207694"}
+    entities = []
+    for wiki_entity in wiki_entities:
+        if wiki_entity in city:
+            entities.append("city")
+        elif wiki_entity in museum:
+            entities.append("museum")
+    # do simple majority vote for really weird edge cases
+    return Counter(entities).most_common(1)[0][0]
+    
+
+def get_painting():
+    parsed = wtp.parse("{{sort|{{nts|1592}}|c. [[1592 in art|1592–1593]]}}:<br>''[[Boy Peeling a Fruit|Boy Peeling Fruit]]''")
+    page = pywikibot.Page(site, f"{parsed.wikilinks[1].text}")
+    painting = page.data_item()
+    paintint_claims = painting.claims
+    interesting_properties = {'height': "P2048",
+                            "width": "P2049",
+                            "location_of_creation": "P1071",
+                            "depicts": "P180",
+                            "materials": "P186",
+                            "genre": "P136",
+                            "year": "P571"}
+    actual_data = {}
+    for k,v in interesting_properties.items():
+        actual_data.update({k: paintint_claims.get(v)})
+
+
+def retrieve_links(cell):
+    parsed_cell = wtp.parse(cell)
+    for link in parsed_cell.wikilinks:
+        page = pywikibot.Page(site, f"{link.title}")
+        if page.exists():
+            data_item = page.data_item()
+            coordinates = get_coordinates(data_item)
+            what_it_is_it = get_instances_for_link(f"{link.title}")
+            custom_entity = get_entity(what_it_is_it)
+            yield {link.target: {'cooridinates': coordinates, 'wiki_entity': what_it_is_it, 'entity': custom_entity}}
+
+
+def fix_the_dimensions(dimensions):
+    dims = []
+    for x in dimensions:
+        val, entity_type = x
+        if entity_type == 'QUANTITY':
+            splited = val.split()
+            for v in splited:
+                v = ''.join([y for y in v if y.isnumeric() or y=='.'])
+                dims.append(v)
+    return tuple([x for x in dims if x])
 
 
 def try_to_understand_the_columns(df):

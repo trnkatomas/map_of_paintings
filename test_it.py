@@ -1,8 +1,9 @@
-from fastapi import FastAPI
-from fastapi.staticfiles import StaticFiles
 import random
+
 import uvicorn
+from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.staticfiles import StaticFiles
 
 app = FastAPI()
 
@@ -25,6 +26,9 @@ def js_endpoint(input: str):
     print(input)
     return {'hello': random.randint(0,100)}
 
+@app.get("/all_artists")
+def get_all_artists():
+    return ['Caravaggio', 'Duerer']
 
 if __name__ == "__main__":
-    uvicorn.run(app, host="0.0.0.0", port=8000)
+    uvicorn.run("test_it:app", host="0.0.0.0", port=8000, reload=True)
