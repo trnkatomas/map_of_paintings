@@ -55,6 +55,9 @@ def parse_with_ner(cell):
 
 
 def get_instances_for_link(link):
+    if isinstance(link, str):
+        page = pywikibot.Page(site, f"{link}")
+        data_item = page.data_item()
     page = pywikibot.Page(site, f"{link}")
     data_item = page.data_item()
     is_instance_of = data_item.claims.get("P31")
@@ -137,10 +140,12 @@ def retrieve_links(cell):
     parsed_cell = wtp.parse(cell)
     for link in parsed_cell.wikilinks:
         page = pywikibot.Page(site, f"{link.title}")
+        if page.isRedirectPage():
+            page = page.getRedirectTarget()
         if page.exists():
             data_item = page.data_item()
             coordinates = get_coordinates(data_item)
-            what_it_is_it = get_instances_for_link(f"{link.title}")
+            what_it_is_it = get_instances_for_link(data_item)
             custom_entity = get_entity(what_it_is_it)
             yield {
                 link.target: {
