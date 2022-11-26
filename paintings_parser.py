@@ -85,6 +85,26 @@ def get_entity(wiki_entities):
     return Counter(entities).most_common(1)[0][0]
 
 
+def get_only_elem_from_collection(values):
+    if len(values) == 1:
+        values = list(values)[0]
+    return values
+
+
+def get_amount(claims):
+    values = {d.getTarget().amount for d in claims}   
+    return get_only_elem_from_collection(values)
+
+
+def get_labels(claims):
+    return {d.getTarget().get().get('labels').get('en') for d in claims}        
+
+
+def get_time(claims):
+    values = {d.getTarget().year for d in claims}   
+    return get_only_elem_from_collection(values)
+
+
 def get_painting():
     parsed = wtp.parse(
         "{{sort|{{nts|1592}}|c. [[1592 in art|1592–1593]]}}:<br>''[[Boy Peeling a Fruit|Boy Peeling Fruit]]''"
@@ -92,6 +112,8 @@ def get_painting():
     page = pywikibot.Page(site, f"{parsed.wikilinks[1].text}")
     painting = page.data_item()
     paintint_claims = painting.claims
+    extract_from_category = {'height': get_amount, 'width': get_amount, 'location_of_creation': get_labels, 'depicts': get_labels,
+                         'materials': get_labels, 'genre': get_labels, 'year': get_time} 
     interesting_properties = {
         "height": "P2048",
         "width": "P2049",
@@ -104,6 +126,11 @@ def get_painting():
     actual_data = {}
     for k, v in interesting_properties.items():
         actual_data.update({k: paintint_claims.get(v)})
+    
+    parsed_data = {}
+    for k, v in actual_data.items():
+        parsed_data.update({k: extract_from_category[k](v)})
+    return parsed_data
 
 
 def retrieve_links(cell):
