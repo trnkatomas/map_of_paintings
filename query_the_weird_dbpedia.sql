@@ -1,5 +1,5 @@
 SELECT # (COUNT(*) AS ?count)
- ?painting , ?paintingName, ?artist, ?museum, ?long, ?lat, ?width, ?height, ?year, ?medium, ?comment
+ ?painting , ?paintingName, ?artist, ?museum, ?long, ?lat, ?width, ?height, ?year_created, ?medium, ?depiction, ?comment
  {
      ?painting a dbo:Artwork;
                 rdfs:label ?paintingName;          
@@ -21,12 +21,16 @@ SELECT # (COUNT(*) AS ?count)
         ?painting rdfs:comment ?comment
      }
    OPTIONAL {
-        ?painting dbp:year ?year;
+        ?painting dbp:year ?year_created;
                   dbp:medium ?medium
    }
    OPTIONAL {
-         ?painting  dbp:height_metric ?height;
-                            dbp:widthWidth ?width
+         ?painting  dbp:heightMetric ?height;
+                    dbp:widthMetric ?width
+    }
+    OPTIONAL {
+         ?painting  dbp:lengthMetric ?height;
+                    dbp:widthMetric ?width
     }
     OPTIONAL {
          ?museum geo:long ?long;
@@ -35,6 +39,9 @@ SELECT # (COUNT(*) AS ?count)
      OPTIONAL {
          ?museum georss:point ?lat;
                              georss:point ?long
+     }
+     OPTIONAL {
+         ?painting foaf:depiction ?depiction
      }
     FILTER 
        ( LANG ( ?paintingName ) = 'en' AND
